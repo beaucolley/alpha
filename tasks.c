@@ -250,6 +250,10 @@ void coarsegrid(const char* flow_file, int resolution)
 			}
 		}
 	}
+
+    //TODO Sort and print in decending S values
+
+    //TODO Free Memory
     //O(1)
   	//Sort into 2D array of linked list
 
