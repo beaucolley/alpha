@@ -129,24 +129,41 @@ void coarsegrid(const char* flow_file, int resolution)
     }
     
     //Define a 2D array of linked lists to store points for each grid cell
-    list_t*** grid = (list_t***)malloc(sizeof(list_t**));
+//    list_t*** grid = (list_t***)malloc(sizeof(list_t**));
+//
+//    for(int i=0;i<resolution;i++){
+//        grid[i] =(list_t**)malloc(resolution * sizeof(list_t*));
+//
+//        for(int j=0;j<resolution;j++){
+//            grid[i][j] = list_new();
+//
+//            //Use head node to store running sum for (x,y,u,v) for averaging
+//            list_push_front(grid[i][j],setData(0,0,0,0));
+//
+//            if(DEBUG_TASK2){
+//            	printf("1 -");
+//            	printList(grid[i][j],1);
+//            }
+//
+//
+//        }
+//    }
+    list_t** grid[resolution];
     
-    for(int i=0;i<resolution;i++){
-        grid[i] =(list_t**)malloc(resolution * sizeof(list_t*));
-        
-        for(int j=0;j<resolution;j++){
-            grid[i][j] = list_new();
-            
-            //Use head node to store running sum for (x,y,u,v) for averaging
-            list_push_front(grid[i][j],setData(0,0,0,0));
+    for(int i=0; i<resolution; i++){
+    	grid[i] = (list_t*)malloc(resolution * sizeof(list_t*));
 
-            if(DEBUG_TASK2){
-            	printf("1 -");
-            	printList(grid[i][j],1);
-            }
+    	for(int j=0; j<resolution; j++){
+    		grid[i][j] = list_new();
 
+//    	Use head node to store running sum for (x,y,u,v) for averaging
+			list_push_front(grid[i][j],setData(0,0,0,0));
 
-        }
+			if(DEBUG_TASK2){
+				printf("1 -");
+				printList(grid[i][j],1);
+			}
+    	}
     }
     
     if(DEBUG_TASK2){
