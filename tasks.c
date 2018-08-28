@@ -54,10 +54,10 @@ void maxveldiff(const char* flow_file)
     float vMin = vTemp;
     float vMax = vTemp;
     
-    struct point_data *uMin_point = setData(xTemp,yTemp, uTemp,vTemp, 0);
-    struct point_data *uMax_point = setData(xTemp,yTemp, uTemp,vTemp, 0);
-    struct point_data *vMin_point = setData(xTemp,yTemp, uTemp,vTemp, 0);
-    struct point_data *vMax_point = setData(xTemp,yTemp, uTemp,vTemp, 0);
+    struct point_data *uMin_point = setData1(xTemp,yTemp, uTemp,vTemp);
+    struct point_data *uMax_point = setData1(xTemp,yTemp, uTemp,vTemp);
+    struct point_data *vMin_point = setData1(xTemp,yTemp, uTemp,vTemp);
+    struct point_data *vMax_point = setData1(xTemp,yTemp, uTemp,vTemp);
     
     //Process Data
     while (fscanf(data_in, "%f,%f,%f,%f", &xTemp,&yTemp,&uTemp,&vTemp) > 0){
@@ -68,19 +68,18 @@ void maxveldiff(const char* flow_file)
         
         if(uTemp>uMax){
             uMax = uTemp;
-            uMax_point = setData(xTemp,yTemp, uTemp,vTemp, 0);
+            uMax_point = setData1(xTemp,yTemp, uTemp,vTemp);
         }
         if(uTemp<uMin){
             uMin = uTemp;
-            uMin_point = setData(xTemp,yTemp, uTemp,vTemp, 0);
+            uMin_point = setData1(xTemp,yTemp, uTemp,vTemp);
         }
         if(vTemp>vMax){
             vMax = vTemp;
-            vMax_point = setData(xTemp,yTemp, uTemp,vTemp, 0);
+            vMax_point = setData1(xTemp,yTemp, uTemp,vTemp);
         }
         if(vTemp<vMin){
             vMin = vTemp;
-            vMin_point = setData(xTemp,yTemp, uTemp,vTemp, 0);
         }
     }
     
@@ -137,7 +136,7 @@ void coarsegrid(const char* flow_file, int resolution)
     		grid[i][j] = list_new();
 
 //    	Use head node to store running sum for (x,y,u,v) for averaging
-			list_push_front(grid[i][j],setData(0,0,0,0,0));
+			list_push_front(grid[i][j],setData2(0,0,0,0,0));
 
 			if(DEBUG_TASK2){
 				printf("1 grid[%i][%i] -",i,j);
@@ -180,9 +179,6 @@ void coarsegrid(const char* flow_file, int resolution)
     float xTemp, yTemp, uTemp, vTemp;
     float xShift, yShift;
     
-//    fscanf(data_in, "%f,%f,%f,%f", &xTemp,&yTemp,&uTemp,&vTemp);   
-//    list_push_front(grid[1][1],setData(xTemp,yTemp,uTemp,vTemp));
-//    printf("NumElements: %d\n",grid[1][1]->num_elements);
     
     while (fscanf(data_in, "%f,%f,%f,%f", &xTemp,&yTemp,&uTemp,&vTemp) > 0){
         
@@ -199,20 +195,18 @@ void coarsegrid(const char* flow_file, int resolution)
             yShift = yTemp - CG_YMIN;
             
             //Calculate Grid location
-//            int xCell = round(xTemp/dx);
-//            int yCell = round(yTemp/dy);
             int xCell = xShift/dx;
             int yCell = yShift/dy;
             
             if(DEBUG_TASK2){
                 printf("Shifted (x,y)= (%f,%f) -> Grid[%i,%i]\n",xShift,yShift,xCell,yCell);
             }
+
             //Add values to running total
-            //TODO Need to sum non shifted Values
-            runningSum(grid[xCell][yCell],xTemp,yTemp,yTemp,vTemp);
+            runningSum(grid[xCell][yCell],xTemp,yTemp,uTemp,vTemp);
 
             //Add to back of Linked List
-            list_push_back(grid[xCell][yCell],setData(xTemp,yTemp,yTemp,vTemp,0));
+            list_push_back(grid[xCell][yCell],setData1(xTemp,yTemp,uTemp,vTemp));
         }else{
         	if(DEBUG_TASK2){
         		printf("Point out of range\n");
@@ -233,10 +227,9 @@ void coarsegrid(const char* flow_file, int resolution)
         } 
     }
     
-    //Convert head of each list from running sum to average
+    //Convert head of each list from running sum to average and calculate head value
     for(int i=0; i<resolution; i++){
 		for(int j=0; j<resolution; j++){
-			printf("S Value and Average: grid[%i,%i]\n",i,j);
 			calcAverage(grid[i][j]);
 			calcSValue(grid[i][j]);
 		}
@@ -253,7 +246,7 @@ void coarsegrid(const char* flow_file, int resolution)
 		}
 	}
 
-    //TODO Sort and print in decending S values
+   //Transfer cell averages to array
 
     int numCells = pow(resolution,2);
     int index = 0;
@@ -267,11 +260,32 @@ void coarsegrid(const char* flow_file, int resolution)
 		}
     }
 
-    	//Create node array
-    	//Merge Sort Node Array
-    	//Open File
-    	//fPrint to CSV
-    	//Close Node Array
+    if(TASK2_CONSOLE_RESULTS){
+    	printf("S-Points Before Sorting\n");
+       	   for(int i=0; i<numCells; i++){
+       		   printNode(sPoints[i]);
+       	   }
+     }
+
+    //Sort Array
+    mergeSort(sPoints,0,numCells);
+
+
+    if(TASK2_CONSOLE_RESULTS){
+    	printf("S-Points After Sorting\n");
+   	   for(int i=0; i<numCells; i++){
+   		   printNode(sPoints[i]);
+   	   }
+    }
+
+    //Print Results to CSV
+	FILE *data_out;
+	data_out = fopen("task2.csv","w+");
+
+	fprintf(data_out,"%s,s\n",headings);
+	for(int i=0; i<numCells; i++){
+	   fprintNode(sPoints[i],data_out);
+	}
 
     //TODO Free Memory
 
@@ -310,7 +324,17 @@ void vortcalc(const char* flow_file)
     printf("vortcalc() - IMPLEMENT ME!\n");
 }
 
-struct point_data* setData(float x, float y, float u, float v, float s){
+struct point_data* setData1(float x, float y, float u, float v){
+    struct point_data *point = malloc(sizeof(struct point_data));
+    point->x=x;
+    point->y=y;
+    point->u=u;
+    point->v=v;
+    point->s=0;
+    return point;
+}
+
+struct point_data* setData2(float x, float y, float u, float v, float s){
     struct point_data *point = malloc(sizeof(struct point_data));
     point->x=x;
     point->y=y;
@@ -326,6 +350,10 @@ void printData(struct point_data *point){
 
 void fprintData(struct point_data *point,FILE *file){
     fprintf(file,"%f,%f,%f,%f\n",point->x,point->y,point->u,point->v);
+}
+
+void fprintNode(struct node node,FILE *file){
+    fprintf(file,"%f,%f,%f,%f,%f\n",node.data.x,node.data.y,node.data.u,node.data.v,node.data.s);
 }
 
 list_t* list_new()
@@ -376,10 +404,10 @@ void runningSum(list_t* list, float x, float y,float u,float v){
 }
 void calcAverage(list_t* list){
 	if(list->num_elements>0){
-		list->head->data.x = list->head->data.x/list->num_elements;
-		list->head->data.y = list->head->data.y/list->num_elements;
-		list->head->data.u = list->head->data.u/list->num_elements;
-		list->head->data.v = list->head->data.v/list->num_elements;
+		list->head->data.x = list->head->data.x/(list->num_elements-1);
+		list->head->data.y = list->head->data.y/(list->num_elements-1);
+		list->head->data.u = list->head->data.u/(list->num_elements-1);
+		list->head->data.v = list->head->data.v/(list->num_elements-1);
 	}else{
 		printf("WARNING - Cannot Divide by 0\n");
 	}
@@ -412,17 +440,21 @@ void printList(list_t* list,int recursive){
 	}
 }
 
+void printNode(struct node node){
+	printf("%f,%f,%f,%f,%f\n",node.data.x,node.data.y,node.data.u,node.data.v,node.data.s);
+}
+
 // Merges two subarrays of arr[].
 // First subarray is arr[l..m]
 // Second subarray is arr[m+1..r]
-void merge(int arr[], int l, int m, int r)
+void merge(struct node arr[], int l, int m, int r)
 {
     int i, j, k;
     int n1 = m - l + 1;
     int n2 =  r - m;
 
     /* create temp arrays */
-    int L[n1], R[n2];
+    struct node L[n1], R[n2];
 
     /* Copy data to temp arrays L[] and R[] */
     for (i = 0; i < n1; i++)
@@ -436,7 +468,7 @@ void merge(int arr[], int l, int m, int r)
     k = l; // Initial index of merged subarray
     while (i < n1 && j < n2)
     {
-        if (L[i] <= R[j])
+        if (L[i].data.s <= R[j].data.s)
         {
             arr[k] = L[i];
             i++;
@@ -470,7 +502,7 @@ void merge(int arr[], int l, int m, int r)
 
 /* l is for left index and r is right index of the
    sub-array of arr to be sorted */
-void mergeSort(int arr[], int l, int r)
+void mergeSort(struct node arr[], int l, int r)
 {
     if (l < r)
     {

@@ -41,11 +41,15 @@ void searching(const char* flow_file);
 
 void vortcalc(const char* flow_file);
 
-struct point_data* setData(float x, float y, float u, float v, float s);
+struct point_data* setData1(float x, float y, float u, float v);
+
+struct point_data* setData2(float x, float y, float u, float v, float s);
 
 void printData(struct point_data *point);
 
 void fprintData(struct point_data *point, FILE *file);
+
+void fprintNode(struct node node,FILE *file);
 
 list_t* list_new();
 
@@ -61,9 +65,11 @@ void calcSValue(list_t* list);
 
 void printList(list_t* list,int recursive);
 
-void merge(int arr[], int l, int m, int r);
+void printNode(struct node node);
 
-void mergeSort(int arr[], int l, int r);
+void merge(struct node arr[], int l, int m, int r);
+
+void mergeSort(struct node arr[], int l, int r);
 
 
 #endif
