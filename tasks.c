@@ -141,9 +141,8 @@ void coarsegrid(const char* flow_file, int resolution)
             list_push_front(grid[i][j],setData(0,0,0,0));
 
             if(DEBUG_TASK2){
-            	printf("1 - grid[%i,%i]\n",i,j);
-				printf("->Num_elements = %i\n",grid[i][j]->num_elements);
-				printf("->Head = %p\n",grid[i][j]->head);
+            	printf("1 -");
+            	printList(grid[i][j],1);
             }
 
 
@@ -153,7 +152,8 @@ void coarsegrid(const char* flow_file, int resolution)
     if(DEBUG_TASK2){
        for(int i=0; i<resolution; i++){
             for(int j=0; j<resolution; j++){
-            printf("2 - grid[%i,%i]->Num_elements = %i\n",i,j,grid[i][j]->num_elements);
+            	printf("2 -");
+            	printList(grid[i][j],1);
             }
         } 
     }
@@ -208,6 +208,7 @@ void coarsegrid(const char* flow_file, int resolution)
                 printf("Shifted (x,y)= (%f,%f) -> Grid[%i,%i]\n",xTemp,yTemp,xCell,yCell);
             }
             //Add values to running total
+            //TODO Need to sum non shifted Values
             runningSum(grid[xCell][yCell],xTemp,yTemp,yTemp,vTemp);
 
             //Add to back of Linked List
@@ -235,6 +236,7 @@ void coarsegrid(const char* flow_file, int resolution)
     //Convert head of each list from running sum to average
     for(int i=0; i<resolution; i++){
 		for(int j=0; j<resolution; j++){
+			printf("S Value and Average: grid[%i,%i]\n",i,j);
 			calcAverage(grid[i][j]);
 			calcSValue(grid[i][j]);
 		}
@@ -253,14 +255,25 @@ void coarsegrid(const char* flow_file, int resolution)
 
     //TODO Sort and print in decending S values
 
+    int numCells = pow(resolution,2);
+    int index = 0;
+
+    struct node sPoints[numCells];
+
+    for(int i=0; i<resolution; i++){
+		for(int j=0; j<resolution; j++){
+			sPoints[index] = *grid[i][j]->head;
+			index += 1;
+		}
+    }
+
+    	//Create node array
+    	//Merge Sort Node Array
+    	//Open File
+    	//fPrint to CSV
+    	//Close Node Array
+
     //TODO Free Memory
-    //O(1)
-  	//Sort into 2D array of linked list
-
-    //O(n)
-
-    //Average Each Linked List
-    //O(n)
 
 }
 
@@ -329,7 +342,7 @@ void list_push_front(list_t* list, struct point_data* data)
 {
     assert(list != NULL);
     node_t* new = (node_t*)malloc(sizeof(node_t));
-    assert(new);
+    assert(new != NULL);
     new->data = *data;
     new->next = list->head;
     list->head = new;
@@ -361,16 +374,113 @@ void runningSum(list_t* list, float x, float y,float u,float v){
 	list->head->data.v += v;
 }
 void calcAverage(list_t* list){
-	list->head->data.x = list->head->data.x/list->num_elements;
-	list->head->data.y = list->head->data.y/list->num_elements;
-	list->head->data.u = list->head->data.u/list->num_elements;
-	list->head->data.v = list->head->data.v/list->num_elements;
+	if(list->num_elements>0){
+		list->head->data.x = list->head->data.x/list->num_elements;
+		list->head->data.y = list->head->data.y/list->num_elements;
+		list->head->data.u = list->head->data.u/list->num_elements;
+		list->head->data.v = list->head->data.v/list->num_elements;
+	}else{
+		printf("WARNING - Cannot Divide by 0\n");
+	}
 }
 
 void calcSValue(list_t* list){
+	assert(list != NULL);
 	float x_av_2 = pow(list->head->data.x,2);
 	float y_av_2 = pow(list->head->data.y,2);
 	float u_av_2 = pow(list->head->data.u,2);
 	float v_av_2 = pow(list->head->data.v,2);
 	list->head->data.s = 100*((sqrt(u_av_2+v_av_2)/sqrt(x_av_2+y_av_2)));
+}
+
+void printList(list_t* list,int recursive){
+	assert(list != NULL);
+	printf("num_elements->%i\n",list->num_elements);
+
+	node_t* tempNode = (node_t*)malloc(sizeof(node_t));
+	tempNode = list->head;
+
+	printf("%f,%f,%f,%f,%f\n",tempNode->data.x,tempNode->data.y,
+			tempNode->data.u,tempNode->data.v,tempNode->data.s);
+	if(recursive){
+		while(tempNode->next != NULL){
+			printf("%f,%f,%f,%f\n",tempNode->data.x,tempNode->data.y,
+					tempNode->data.u,tempNode->data.v);
+			tempNode = tempNode->next;
+		}
+	}
+}
+
+// Merges two subarrays of arr[].
+// First subarray is arr[l..m]
+// Second subarray is arr[m+1..r]
+void merge(int arr[], int l, int m, int r)
+{
+    int i, j, k;
+    int n1 = m - l + 1;
+    int n2 =  r - m;
+
+    /* create temp arrays */
+    int L[n1], R[n2];
+
+    /* Copy data to temp arrays L[] and R[] */
+    for (i = 0; i < n1; i++)
+        L[i] = arr[l + i];
+    for (j = 0; j < n2; j++)
+        R[j] = arr[m + 1+ j];
+
+    /* Merge the temp arrays back into arr[l..r]*/
+    i = 0; // Initial index of first subarray
+    j = 0; // Initial index of second subarray
+    k = l; // Initial index of merged subarray
+    while (i < n1 && j < n2)
+    {
+        if (L[i] <= R[j])
+        {
+            arr[k] = L[i];
+            i++;
+        }
+        else
+        {
+            arr[k] = R[j];
+            j++;
+        }
+        k++;
+    }
+
+    /* Copy the remaining elements of L[], if there
+       are any */
+    while (i < n1)
+    {
+        arr[k] = L[i];
+        i++;
+        k++;
+    }
+
+    /* Copy the remaining elements of R[], if there
+       are any */
+    while (j < n2)
+    {
+        arr[k] = R[j];
+        j++;
+        k++;
+    }
+}
+
+/* l is for left index and r is right index of the
+   sub-array of arr to be sorted */
+void mergeSort(int arr[], int l, int r)
+{
+    if (l < r)
+    {
+        // Same as (l+r)/2, but avoids overflow for
+        // large l and h
+        int m = l+(r-l)/2;
+
+        // Sort first and second halves
+        mergeSort(arr, l, m);
+        mergeSort(arr, m+1, r);
+
+        merge(arr, l, m, r);
+    }
 }

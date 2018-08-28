@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
 	struct timeval start;
 	struct timeval stop;
         
-        //Check for correct input aruguments
+        //Check for correct input arguments
         if (argc != 3){
             printf("usage: %s <data file> <resolution>", argv[0]);
             return 0;

@@ -59,4 +59,11 @@ void calcAverage(list_t* list);
 
 void calcSValue(list_t* list);
 
+void printList(list_t* list,int recursive);
+
+void merge(int arr[], int l, int m, int r);
+
+void mergeSort(int arr[], int l, int r);
+
+
 #endif
