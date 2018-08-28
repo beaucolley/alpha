@@ -41,7 +41,7 @@ void searching(const char* flow_file);
 
 void vortcalc(const char* flow_file);
 
-struct point_data* setData(float x, float y, float u, float v);
+struct point_data* setData(float x, float y, float u, float v, float s);
 
 void printData(struct point_data *point);
 

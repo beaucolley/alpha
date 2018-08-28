@@ -54,10 +54,10 @@ void maxveldiff(const char* flow_file)
     float vMin = vTemp;
     float vMax = vTemp;
     
-    struct point_data *uMin_point = setData(xTemp,yTemp, uTemp,vTemp);
-    struct point_data *uMax_point = setData(xTemp,yTemp, uTemp,vTemp);
-    struct point_data *vMin_point = setData(xTemp,yTemp, uTemp,vTemp);
-    struct point_data *vMax_point = setData(xTemp,yTemp, uTemp,vTemp);
+    struct point_data *uMin_point = setData(xTemp,yTemp, uTemp,vTemp, 0);
+    struct point_data *uMax_point = setData(xTemp,yTemp, uTemp,vTemp, 0);
+    struct point_data *vMin_point = setData(xTemp,yTemp, uTemp,vTemp, 0);
+    struct point_data *vMax_point = setData(xTemp,yTemp, uTemp,vTemp, 0);
     
     //Process Data
     while (fscanf(data_in, "%f,%f,%f,%f", &xTemp,&yTemp,&uTemp,&vTemp) > 0){
@@ -68,19 +68,19 @@ void maxveldiff(const char* flow_file)
         
         if(uTemp>uMax){
             uMax = uTemp;
-            uMax_point = setData(xTemp,yTemp, uTemp,vTemp);
+            uMax_point = setData(xTemp,yTemp, uTemp,vTemp, 0);
         }
         if(uTemp<uMin){
             uMin = uTemp;
-            uMin_point = setData(xTemp,yTemp, uTemp,vTemp);
+            uMin_point = setData(xTemp,yTemp, uTemp,vTemp, 0);
         }
         if(vTemp>vMax){
             vMax = vTemp;
-            vMax_point = setData(xTemp,yTemp, uTemp,vTemp);
+            vMax_point = setData(xTemp,yTemp, uTemp,vTemp, 0);
         }
         if(vTemp<vMin){
             vMin = vTemp;
-            vMin_point = setData(xTemp,yTemp, uTemp,vTemp);
+            vMin_point = setData(xTemp,yTemp, uTemp,vTemp, 0);
         }
     }
     
@@ -115,10 +115,10 @@ void coarsegrid(const char* flow_file, int resolution)
 {
     //Grid Range
     
-    int CG_XMIN = 10;
-    int CG_XMAX = 70;
-    int CG_YMIN = -20;
-    int CG_YMAX = 20;
+    float CG_XMIN = 10;
+    float CG_XMAX = 70;
+    float CG_YMIN = -20;
+    float CG_YMAX = 20;
     
     //Calculate dX and dY
     float dx = (CG_XMAX-CG_XMIN)/(resolution-1);
@@ -128,26 +128,6 @@ void coarsegrid(const char* flow_file, int resolution)
         printf("dx = %f dy= %f\n",dx,dy);
     }
     
-    //Define a 2D array of linked lists to store points for each grid cell
-//    list_t*** grid = (list_t***)malloc(sizeof(list_t**));
-//
-//    for(int i=0;i<resolution;i++){
-//        grid[i] =(list_t**)malloc(resolution * sizeof(list_t*));
-//
-//        for(int j=0;j<resolution;j++){
-//            grid[i][j] = list_new();
-//
-//            //Use head node to store running sum for (x,y,u,v) for averaging
-//            list_push_front(grid[i][j],setData(0,0,0,0));
-//
-//            if(DEBUG_TASK2){
-//            	printf("1 -");
-//            	printList(grid[i][j],1);
-//            }
-//
-//
-//        }
-//    }
     list_t** grid[resolution];
     
     for(int i=0; i<resolution; i++){
@@ -157,10 +137,10 @@ void coarsegrid(const char* flow_file, int resolution)
     		grid[i][j] = list_new();
 
 //    	Use head node to store running sum for (x,y,u,v) for averaging
-			list_push_front(grid[i][j],setData(0,0,0,0));
+			list_push_front(grid[i][j],setData(0,0,0,0,0));
 
 			if(DEBUG_TASK2){
-				printf("1 -");
+				printf("1 grid[%i][%i] -",i,j);
 				printList(grid[i][j],1);
 			}
     	}
@@ -169,7 +149,7 @@ void coarsegrid(const char* flow_file, int resolution)
     if(DEBUG_TASK2){
        for(int i=0; i<resolution; i++){
             for(int j=0; j<resolution; j++){
-            	printf("2 -");
+            	printf("2 grid[%i][%i] -",i,j);
             	printList(grid[i][j],1);
             }
         } 
@@ -198,6 +178,7 @@ void coarsegrid(const char* flow_file, int resolution)
      
     //Initialise Temp Variables
     float xTemp, yTemp, uTemp, vTemp;
+    float xShift, yShift;
     
 //    fscanf(data_in, "%f,%f,%f,%f", &xTemp,&yTemp,&uTemp,&vTemp);   
 //    list_push_front(grid[1][1],setData(xTemp,yTemp,uTemp,vTemp));
@@ -214,22 +195,24 @@ void coarsegrid(const char* flow_file, int resolution)
         if(xTemp>=CG_XMIN && xTemp<=CG_XMAX && yTemp>=CG_YMIN && yTemp<=CG_YMAX){
             
             //Shift by XMIN and YMIN
-            xTemp = xTemp - CG_XMIN;
-            yTemp = yTemp - CG_YMIN;
+            xShift = xTemp - CG_XMIN;
+            yShift = yTemp - CG_YMIN;
             
             //Calculate Grid location
-            int xCell = round(xTemp/dx);
-            int yCell = round(yTemp/dy);
+//            int xCell = round(xTemp/dx);
+//            int yCell = round(yTemp/dy);
+            int xCell = xShift/dx;
+            int yCell = yShift/dy;
             
             if(DEBUG_TASK2){
-                printf("Shifted (x,y)= (%f,%f) -> Grid[%i,%i]\n",xTemp,yTemp,xCell,yCell);
+                printf("Shifted (x,y)= (%f,%f) -> Grid[%i,%i]\n",xShift,yShift,xCell,yCell);
             }
             //Add values to running total
             //TODO Need to sum non shifted Values
             runningSum(grid[xCell][yCell],xTemp,yTemp,yTemp,vTemp);
 
             //Add to back of Linked List
-            list_push_back(grid[xCell][yCell],setData(xTemp,yTemp,yTemp,vTemp));
+            list_push_back(grid[xCell][yCell],setData(xTemp,yTemp,yTemp,vTemp,0));
         }else{
         	if(DEBUG_TASK2){
         		printf("Point out of range\n");
@@ -327,12 +310,13 @@ void vortcalc(const char* flow_file)
     printf("vortcalc() - IMPLEMENT ME!\n");
 }
 
-struct point_data* setData(float x, float y, float u, float v){
+struct point_data* setData(float x, float y, float u, float v, float s){
     struct point_data *point = malloc(sizeof(struct point_data));
     point->x=x;
     point->y=y;
     point->u=u;
     point->v=v;
+    point->s=s;
     return point;
 }
 
@@ -384,7 +368,7 @@ void list_push_back(list_t* list, struct point_data* data)
 }
 
 void runningSum(list_t* list, float x, float y,float u,float v){
-	assert(list != NULL);
+	assert(list != NULL && "running sum = NULL");
 	list->head->data.x += x;
 	list->head->data.y += y;
 	list->head->data.u += u;
