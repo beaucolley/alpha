@@ -13,10 +13,16 @@
 #include "tasks.h"
 #include <assert.h>
 
+//Constants
 #define BUFFER 50
+
+//Debug Switches
 #define DEBUG_TASK1 0
-#define DEBUG_TASK2 1
+#define DEBUG_TASK2 0
+#define DEBUG_TASK3 1
+#define DEBUG_TASK4 1
 #define TASK2_CONSOLE_RESULTS 1
+
 
 void maxveldiff(const char* flow_file)
 {
@@ -130,7 +136,7 @@ void coarsegrid(const char* flow_file, int resolution)
     list_t** grid[resolution];
     
     for(int i=0; i<resolution; i++){
-    	grid[i] = (list_t*)malloc(resolution * sizeof(list_t*));
+    	grid[i] = (list_t**)malloc(resolution * sizeof(list_t*));
 
     	for(int j=0; j<resolution; j++){
     		grid[i][j] = list_new();
@@ -293,7 +299,66 @@ void coarsegrid(const char* flow_file, int resolution)
 
 void searching(const char* flow_file)
 {
-    printf("searching() - IMPLEMENT ME!\n");
+	//Open Data File
+	FILE *data_in;
+	data_in = fopen(flow_file, "r");
+
+	if(data_in == NULL){
+		printf("Failed to Open File\n");
+		return;
+	}
+
+	//Store Column Headings
+	char headings[BUFFER];
+
+	//Check heading format
+	fscanf(data_in, "%s",headings);
+	if(strcmp(headings,"x,y,u,v")!=0){
+		printf("Incorrect data format - expecting <x,y,u,v>\n");
+		printf("Data is in %s\n",headings);
+		return;
+	}
+
+	//Create List of y=0 Points
+	list_t* midPointsList = list_new();
+
+	float xTemp, yTemp, uTemp, vTemp;
+
+	//Process Points
+	while(fscanf(data_in, "%f,%f,%f,%f", &xTemp,&yTemp,&uTemp,&vTemp) > 0){
+
+		if(DEBUG_TASK3){
+			printf("Processing Point (x,y,u,v) = (%f,%f,%f,%f)\n",
+					xTemp,yTemp,uTemp,vTemp);
+		}
+
+		if(yTemp == 0){
+		    list_push_back(midPointsList,setData1(xTemp,yTemp,uTemp,vTemp));
+		}else{
+			if(DEBUG_TASK3){
+				printf("Point out of Range\n");
+			}
+		}
+	}
+
+	//Create Array y=0 Points
+	point_data_Array midPointsArray;
+	midPointsArray.array = malloc(midPointsList->num_elements*sizeof(point_data));
+	midPointsArray.size = 0;
+
+	//Populate Array
+	for(int i=0; i<midPointsList->num_elements; i++){
+		midPointsArray.array[i] = *list_pop_front(midPointsList);
+		midPointsArray.size++;
+	}
+
+	if(DEBUG_TASK3){
+		for(int i=0; i<midPointsArray.size; i++){
+			printData(&midPointsArray.array[i]);
+		}
+	}
+
+
 
  	//Create Sub Array of all y = 0
  	//O(n)
@@ -393,6 +458,24 @@ void list_push_back(list_t* list, struct point_data* data)
     if (list->head == NULL)
         list->head = new;
     list->num_elements++;
+}
+
+struct point_data* list_pop_front(list_t* list)
+{
+    assert(list != NULL);
+    assert(list->num_elements > 0);
+    node_t* old;
+    assert(list->head != NULL);
+    old = list->head;
+    list->head = list->head->next;
+    struct point_data* d = &old->data;
+    free(old);
+    list->num_elements--;
+    if (list->num_elements == 0) {
+        list->head = NULL;
+        list->tail = NULL;
+    }
+    return d;
 }
 
 void runningSum(list_t* list, float x, float y,float u,float v){

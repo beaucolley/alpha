@@ -32,6 +32,10 @@ typedef struct {
     node_t* tail;
 } list_t;
 
+typedef struct {
+  point_data *array;
+  size_t size;
+}point_data_Array;
 
 void maxveldiff(const char* flow_file);
 
@@ -57,6 +61,8 @@ void list_push_front(list_t* list, struct point_data* data);
 
 void list_push_back(list_t* list, struct point_data* data);
 
+struct point_data* list_pop_front(list_t* list);
+
 void runningSum(list_t* list, float x, float y,float u,float v);
 
 void calcAverage(list_t* list);
@@ -70,6 +76,5 @@ void printNode(struct node node);
 void merge(struct node arr[], int l, int m, int r);
 
 void mergeSort(struct node arr[], int l, int r);
-
 
 #endif
