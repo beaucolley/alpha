@@ -257,11 +257,11 @@ void coarsegrid(const char* flow_file, int resolution)
     int numCells = pow(resolution,2);
     int index = 0;
 
-    struct node sPoints[numCells];
+    struct point_data sPoints[numCells];
 
     for(int i=0; i<resolution; i++){
 		for(int j=0; j<resolution; j++){
-			sPoints[index] = *grid[i][j]->head;
+			sPoints[index] = grid[i][j]->head->data;
 			index += 1;
 		}
     }
@@ -269,18 +269,18 @@ void coarsegrid(const char* flow_file, int resolution)
     if(TASK2_CONSOLE_RESULTS){
     	printf("S-Points Before Sorting\n");
        	   for(int i=0; i<numCells; i++){
-       		   printNode(sPoints[i]);
+       		   printDataS(&sPoints[i]);
        	   }
      }
 
-    //Sort Array
-    mergeSort(sPoints,0,numCells);
+    //Sort Array d = descending, s = sort by S values
+    mergeSort(sPoints,0,numCells,'d','s');
 
 
     if(TASK2_CONSOLE_RESULTS){
     	printf("S-Points After Sorting\n");
    	   for(int i=0; i<numCells; i++){
-   		   printNode(sPoints[i]);
+   		   printDataS(&sPoints[i]);
    	   }
     }
 
@@ -290,7 +290,7 @@ void coarsegrid(const char* flow_file, int resolution)
 
 	fprintf(data_out,"%s,s\n",headings);
 	for(int i=0; i<numCells; i++){
-	   fprintNode(sPoints[i],data_out);
+	   fprintDataS(&sPoints[i],data_out);
 	}
 
     //TODO Free Memory
@@ -347,16 +347,36 @@ void searching(const char* flow_file)
 	midPointsArray.size = 0;
 
 	//Populate Array
-	for(int i=0; i<midPointsList->num_elements; i++){
-		midPointsArray.array[i] = *list_pop_front(midPointsList);
+	for(int i=0; midPointsList->num_elements>0; i++){
+		midPointsArray.array[i] = list_pop_front(midPointsList);
 		midPointsArray.size++;
 	}
 
 	if(DEBUG_TASK3){
+		printf("Data Before Sorting\n");
+		for(int i=0; i<midPointsList->num_elements; i++){
+			printData(&midPointsArray.array[i]);
+		}
+	}
+
+	//Sort Array a = ascending, u = sort by U values
+	mergeSort(midPointsArray.array,0,midPointsArray.size,'a','u');
+
+	//Get Max U Velocity
+	float maxU = midPointsArray.array[midPointsArray.size-1].u;
+
+	if(DEBUG_TASK3){
+		printf("Data After Sorting\n");
 		for(int i=0; i<midPointsArray.size; i++){
 			printData(&midPointsArray.array[i]);
 		}
 	}
+
+	//Insert into Sorted Linked List
+	for(int i=0; i<midPointsArray.size; i++){
+		list_push_back(midPointsList,&midPointsArray.array[i]);
+	}
+
 
 
 
@@ -413,8 +433,16 @@ void printData(struct point_data *point){
     printf("%f,%f,%f,%f\n",point->x,point->y,point->u,point->v);
 }
 
+void printDataS(struct point_data *point){
+    printf("%f,%f,%f,%f,%f\n",point->x,point->y,point->u,point->v,point->s);
+}
+
 void fprintData(struct point_data *point,FILE *file){
     fprintf(file,"%f,%f,%f,%f\n",point->x,point->y,point->u,point->v);
+}
+
+void fprintDataS(struct point_data *point,FILE *file){
+    fprintf(file,"%f,%f,%f,%f,%f\n",point->x,point->y,point->u,point->v,point->s);
 }
 
 void fprintNode(struct node node,FILE *file){
@@ -460,7 +488,7 @@ void list_push_back(list_t* list, struct point_data* data)
     list->num_elements++;
 }
 
-struct point_data* list_pop_front(list_t* list)
+struct point_data list_pop_front(list_t* list)
 {
     assert(list != NULL);
     assert(list->num_elements > 0);
@@ -468,7 +496,7 @@ struct point_data* list_pop_front(list_t* list)
     assert(list->head != NULL);
     old = list->head;
     list->head = list->head->next;
-    struct point_data* d = &old->data;
+    struct point_data d = old->data;
     free(old);
     list->num_elements--;
     if (list->num_elements == 0) {
@@ -530,14 +558,15 @@ void printNode(struct node node){
 // Merges two subarrays of arr[].
 // First subarray is arr[l..m]
 // Second subarray is arr[m+1..r]
-void merge(struct node arr[], int l, int m, int r)
+void merge(struct point_data arr[], int l, int m, int r, char order, char element)
 {
     int i, j, k;
     int n1 = m - l + 1;
     int n2 =  r - m;
+    float LData, RData;
 
     /* create temp arrays */
-    struct node L[n1], R[n2];
+    struct point_data L[n1], R[n2];
 
     /* Copy data to temp arrays L[] and R[] */
     for (i = 0; i < n1; i++)
@@ -551,17 +580,44 @@ void merge(struct node arr[], int l, int m, int r)
     k = l; // Initial index of merged subarray
     while (i < n1 && j < n2)
     {
-        if (L[i].data.s <= R[j].data.s)
-        {
-            arr[k] = L[i];
-            i++;
+    	//Check which element we are sorting by
+    	switch(element){
+    	case 's':
+    		LData = L[i].s;
+    		RData = R[j].s;
+    		break;
+    	case 'u':
+    		LData = L[i].u;
+			RData = R[j].u;
+			break;
+    	}
+    	//Check for ascending or descending
+        if(order == 'd'){
+        	if (LData >= RData)
+        	        {
+        	            arr[k] = L[i];
+        	            i++;
+        	        }
+        	        else
+        	        {
+        	            arr[k] = R[j];
+        	            j++;
+        	        }
+        	        k++;
+        }else{
+        	if (LData <= RData)
+        	        {
+        	            arr[k] = L[i];
+        	            i++;
+        	        }
+        	        else
+        	        {
+        	            arr[k] = R[j];
+        	            j++;
+        	        }
+        	        k++;
         }
-        else
-        {
-            arr[k] = R[j];
-            j++;
-        }
-        k++;
+
     }
 
     /* Copy the remaining elements of L[], if there
@@ -585,18 +641,24 @@ void merge(struct node arr[], int l, int m, int r)
 
 /* l is for left index and r is right index of the
    sub-array of arr to be sorted */
-void mergeSort(struct node arr[], int l, int r)
+void mergeSort(struct point_data arr[], int l, int r, char order, char element)
 {
-    if (l < r)
-    {
-        // Same as (l+r)/2, but avoids overflow for
-        // large l and h
-        int m = l+(r-l)/2;
+	if(order == 'a' || order == 'd'){
+		if (l < r)
+		    {
+		        // Same as (l+r)/2, but avoids overflow for
+		        // large l and h
+		        int m = l+(r-l)/2;
 
-        // Sort first and second halves
-        mergeSort(arr, l, m);
-        mergeSort(arr, m+1, r);
+		        // Sort first and second halves
+		        mergeSort(arr, l, m, order, element);
+		        mergeSort(arr, m+1, r, order, element);
 
-        merge(arr, l, m, r);
-    }
+
+		        merge(arr, l, m, r, order, element);
+		    }
+	}else{
+		printf("Error - MergeSort - 4 Arg expecting a or d\n");
+	}
+
 }

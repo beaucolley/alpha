@@ -51,7 +51,11 @@ struct point_data* setData2(float x, float y, float u, float v, float s);
 
 void printData(struct point_data *point);
 
+void printDataS(struct point_data *point);
+
 void fprintData(struct point_data *point, FILE *file);
+
+void fprintDataS(struct point_data *point,FILE *file);
 
 void fprintNode(struct node node,FILE *file);
 
@@ -61,7 +65,7 @@ void list_push_front(list_t* list, struct point_data* data);
 
 void list_push_back(list_t* list, struct point_data* data);
 
-struct point_data* list_pop_front(list_t* list);
+struct point_data list_pop_front(list_t* list);
 
 void runningSum(list_t* list, float x, float y,float u,float v);
 
@@ -73,8 +77,8 @@ void printList(list_t* list,int recursive);
 
 void printNode(struct node node);
 
-void merge(struct node arr[], int l, int m, int r);
+void merge(struct point_data arr[], int l, int m, int r, char order, char element);
 
-void mergeSort(struct node arr[], int l, int r);
+void mergeSort(struct point_data arr[], int l, int r, char order, char element);
 
 #endif
