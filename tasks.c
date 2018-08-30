@@ -19,9 +19,12 @@
 //Debug Switches
 #define DEBUG_TASK1 0
 #define DEBUG_TASK2 0
-#define DEBUG_TASK3 1
+#define DEBUG_TASK3 0
 #define DEBUG_TASK4 1
-#define TASK2_CONSOLE_RESULTS 1
+#define TASK2_CONSOLE_RESULTS 0
+
+#define BST_SUCCESS 1
+#define BST_FAILURE 0
 
 
 void maxveldiff(const char* flow_file)
@@ -377,37 +380,19 @@ void searching(const char* flow_file)
 		list_push_back(midPointsList,&midPointsArray.array[i]);
 	}
 
-
-
-
- 	//Create Sub Array of all y = 0
- 	//O(n)
-
- 	//Quicksort uMin to uMax
- 	//O(nlog(n))
-
- 	//Create Linked List
- 	//O(n)
-
- 	//Create BST
- 	//O(nLog(n))
-
- 	//Linear Search of Array
- 	//O(n)
-
- 	//Binary Seach of Array
- 	//O(logN)
-
- 	//Linear Seach of Linked List
- 	//O(N)
-
-    //Search on BST
+	//Insert into BST
+	bst_t* bst = bst_new(no_free, floatcmp); // memory is held by the array itself
+	perfect_insert(bst, midPointsArray.array, 0, midPointsArray.size - 1);
+	printf("num_elements = %d\n", bst->num_elements);
+	assert(bst->num_elements == midPointsArray.size);
 }
 
 void vortcalc(const char* flow_file)
 {
     printf("vortcalc() - IMPLEMENT ME!\n");
 }
+
+//FUNCTIONS
 
 struct point_data* setData1(float x, float y, float u, float v){
     struct point_data *point = malloc(sizeof(struct point_data));
@@ -662,3 +647,126 @@ void mergeSort(struct point_data arr[], int l, int r, char order, char element)
 	}
 
 }
+
+/* create a new empty bst structure */
+bst_t* bst_new(void (*delfunc)(void*), int (*cmpfunc)(const void*, const void*))
+{
+    bst_t* bst;
+    bst = (bst_t*)malloc(sizeof(bst_t));
+    assert(bst != NULL);
+    bst->root = NULL;
+    bst->num_elements = 0;
+    bst->del = delfunc;
+    bst->cmp = cmpfunc;
+    return bst;
+}
+
+/* free all memory assocated with a subtree */
+void bst_free_subtree(bst_t* bst, BSTnode_t* n)
+{
+    assert(bst != NULL);
+    if (n) {
+        bst_free_subtree(bst, n->left);
+        bst_free_subtree(bst, n->right);
+        bst->del(n->data);
+        free(n);
+        bst->num_elements--;
+    }
+}
+
+/* free all memory associated with a bst */
+void bst_free(bst_t* bst)
+{
+    assert(bst != NULL);
+    bst_free_subtree(bst, bst->root);
+    free(bst);
+}
+
+/* insert a new element into the bst */
+int bst_insert(bst_t* bst, void* d)
+{
+    assert(bst != NULL);
+    assert(d != NULL);
+    BSTnode_t* parent = NULL;
+    BSTnode_t* tmp = bst->root;
+    while (tmp) {
+        parent = tmp;
+        if (bst->cmp(tmp->data, d) > 0) { // element is smaller
+            tmp = tmp->left;
+        }
+        else if (bst->cmp(tmp->data, d) < 0) { // element is bigger
+            tmp = tmp->right;
+        }
+        else {
+            printf("Error floatcmp returned: %i\n",bst->cmp(tmp->data, d));
+
+            return BST_FAILURE;
+        }
+    }
+
+    /* insert as child of parent */
+    BSTnode_t* new_node = (BSTnode_t*)malloc(sizeof(BSTnode_t));
+    assert(new_node != NULL);
+    new_node->data = d;
+    new_node->left = NULL;
+    new_node->right = NULL;
+    if (parent != NULL) {
+        if (bst->cmp(parent->data, d) > 0) { // element is smaller
+            assert(parent->left == NULL);
+            parent->left = new_node;
+        }
+        else {
+            assert(parent->right == NULL);
+            parent->right = new_node;
+        }
+    }
+    else {
+        assert(bst->root == NULL);
+        bst->root = new_node;
+    }
+    bst->num_elements++;
+
+    return BST_SUCCESS;
+}
+
+int floatcmp(struct point_data* a, struct point_data* b)
+{
+	if(a->u > b->u)
+		return 1;
+	else
+		return -1;
+
+//    return (*(float*)a) - (*(float*)b);
+}
+// Implement this function (0)
+void perfect_insert(bst_t* bst, struct point_data* array, int low, int high)
+{
+    if (low <= high) {
+    	// Choose root from array and insert
+    	// Recursively do the same on left and right (1)
+        int mid = low + (high - low) / 2;
+        int* ptr = array + mid;
+        bst_insert(bst, ptr);
+        perfect_insert(bst, array, low, mid - 1);
+        perfect_insert(bst, array, mid + 1, high);
+    }
+}
+
+void no_free(void* v)
+{
+}
+
+int make_unique(int* array, int n)
+{
+    int dest = 0;
+    int itr = 1;
+    while (itr != n) {
+        if (array[dest] != array[itr]) {
+            array[++dest] = array[itr];
+        }
+        itr++;
+    }
+    return dest+1;
+}
+
+
