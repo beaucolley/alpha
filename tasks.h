@@ -17,42 +17,53 @@ typedef struct point_data{
     float s;
 }point_data;
 
-/* node type */
+// Linked List node type
 typedef struct node node_t;
 
-/* node type */
-typedef struct BSTnode BSTnode_t;
-
-struct BSTnode {
-    void* data;
-    BSTnode_t* left;
-    BSTnode_t* right;
-};
-
-/* bst type */
-typedef struct {
-    int num_elements;
-    BSTnode_t* root;
-    void (*del)(void*);
-    int (*cmp)(const void*, const void*);
-} bst_t;
-
-struct node {
-    struct point_data data;
-    node_t* next;
-};
-
-/* linked list type */
+//Linked List type
 typedef struct {
     int num_elements;
     node_t* head;
     node_t* tail;
 } list_t;
 
+//Linked List Node
+struct node {
+    struct point_data data;
+    node_t* next;
+};
+
+//Array Structure
 typedef struct {
   point_data *array;
   size_t size;
 }point_data_Array;
+
+//BST Node Type
+typedef struct BSTnode BSTnode_t;
+
+//BST Type
+typedef struct {
+    int num_elements;
+    BSTnode_t* root;
+    void (*del)(void*);
+    int (*cmp)(struct point_data*, struct point_data*);
+} bst_t;
+
+//BST Node
+struct BSTnode {
+    void* data;
+    BSTnode_t* left;
+    BSTnode_t* right;
+};
+
+float cornerCase(point_data*** points, int i, int j);
+
+float xEdgeCase(point_data*** points, int i, int j);
+
+float yEdgeCase(point_data*** points, int i, int j);
+
+float normalCase(point_data*** points, int i, int j);
 
 void maxveldiff(const char* flow_file);
 
@@ -94,11 +105,7 @@ void printList(list_t* list,int recursive);
 
 void printNode(struct node node);
 
-void merge(struct point_data arr[], int l, int m, int r, char order, char element);
-
-void mergeSort(struct point_data arr[], int l, int r, char order, char element);
-
-bst_t* bst_new(void (*delfunc)(void*), int (*cmpfunc)(const void*, const void*));
+bst_t* bst_new(void (*delfunc)(void*), int (*cmpfunc)(struct point_data*, struct point_data*));
 
 void bst_free_subtree(bst_t* bst, BSTnode_t* n);
 
@@ -114,5 +121,26 @@ void no_free(void* v);
 
 int make_unique(int* array, int n);
 
+void print_BST(BSTnode_t* node);
+
+float absF(float a, float b);
+
+float getClosest(float val1, float val2, float target);
+
+float arrayBinarySearch(struct point_data array[], int size, float target, FILE *file);
+
+float arrayLinearSearch(struct point_data array[],float uTarget,FILE *file);
+
+float linkedListLinearSearch(node_t *node, float uTarget, FILE *file);
+
+void bstSearch(BSTnode_t* root, float uTarget, FILE *file);
+
+void bstSearchUtil(BSTnode_t* root, BSTnode_t* closestNode, float uTarget,FILE *file);
+
+int qSortUcmp(const void *a, const void *b);
+
+int qSortCMP_sDecending(const void *a, const void *b);
+
+int qSortCMP_floats(const void *a, const void *b);
 
 #endif

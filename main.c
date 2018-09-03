@@ -27,19 +27,17 @@ int main(int argc, char *argv[]) {
 	struct timeval start;
 	struct timeval stop;
         
-        //Check for correct input arguments
-        if (argc != 3){
-            printf("usage: %s <data file> <resolution>", argv[0]);
-            return 0;
-        } 
-        if(DEBUG_MAIN){
-            printf("Data File: %s\nGrid Resolution: %d\n",flow_file,resolution);
-        }
-        printf("\n");
+	//Check for correct input arguments
+	if (argc != 3){
+		printf("usage: %s <data file> <resolution>", argv[0]);
+		return 0;
+	}
+	if(DEBUG_MAIN){
+		printf("Data File: %s\nGrid Resolution: %d\n",flow_file,resolution);
+	}
+	printf("\n");
         
-        
-        struct point_node *grid[resolution][resolution];
-    
+
 	/* Task 1: Find the maximum velocity difference */
 	gettimeofday(&start, NULL);
 	maxveldiff(flow_file);

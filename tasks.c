@@ -20,7 +20,7 @@
 #define DEBUG_TASK1 0
 #define DEBUG_TASK2 0
 #define DEBUG_TASK3 0
-#define DEBUG_TASK4 1
+#define DEBUG_TASK4 0
 #define TASK2_CONSOLE_RESULTS 0
 
 #define BST_SUCCESS 1
@@ -277,8 +277,8 @@ void coarsegrid(const char* flow_file, int resolution)
      }
 
     //Sort Array d = descending, s = sort by S values
-    mergeSort(sPoints,0,numCells,'d','s');
-
+//    mergeSort(sPoints,0,numCells,'d','s');
+    qsort(sPoints,numCells,sizeof(struct point_data),qSortCMP_sDecending);
 
     if(TASK2_CONSOLE_RESULTS){
     	printf("S-Points After Sorting\n");
@@ -295,6 +295,7 @@ void coarsegrid(const char* flow_file, int resolution)
 	for(int i=0; i<numCells; i++){
 	   fprintDataS(&sPoints[i],data_out);
 	}
+	fclose(data_out);
 
     //TODO Free Memory
 
@@ -357,16 +358,15 @@ void searching(const char* flow_file)
 
 	if(DEBUG_TASK3){
 		printf("Data Before Sorting\n");
-		for(int i=0; i<midPointsList->num_elements; i++){
+		for(int i=0; i<midPointsArray.size; i++){
 			printData(&midPointsArray.array[i]);
 		}
 	}
 
 	//Sort Array a = ascending, u = sort by U values
-	mergeSort(midPointsArray.array,0,midPointsArray.size,'a','u');
+//	mergeSort(midPointsArray.array,0,midPointsArray.size,'a','u');
 
-	//Get Max U Velocity
-	float maxU = midPointsArray.array[midPointsArray.size-1].u;
+	qsort(midPointsArray.array,midPointsArray.size,sizeof(struct point_data),qSortUcmp);
 
 	if(DEBUG_TASK3){
 		printf("Data After Sorting\n");
@@ -381,18 +381,267 @@ void searching(const char* flow_file)
 	}
 
 	//Insert into BST
-	bst_t* bst = bst_new(no_free, floatcmp); // memory is held by the array itself
+	bst_t* bst = bst_new(no_free, floatcmp);
 	perfect_insert(bst, midPointsArray.array, 0, midPointsArray.size - 1);
-	printf("num_elements = %d\n", bst->num_elements);
 	assert(bst->num_elements == midPointsArray.size);
+
+	if(DEBUG_TASK3){
+		printf("BST - num_elements = %d\n", bst->num_elements);
+		print_BST(bst->root);
+	}
+
+	//Get Max U Velocity
+	float uMax = midPointsArray.array[midPointsArray.size-1].u;
+
+	//Target u Velocity
+	float uTarget = 0.4*uMax;
+
+
+	if(DEBUG_TASK3){
+		printf("uMax = %f, uTarget = %f\n",uMax,uTarget);
+	}
+
+	FILE *data_out;
+	data_out = fopen("task3.csv","w+");
+
+	struct timeval start;
+	struct timeval stop;
+
+	//Linear Search of Array
+	gettimeofday(&start, NULL);
+	float closestValue = arrayLinearSearch(midPointsArray.array,uTarget,data_out);
+	fprintf(data_out,"%f\n",closestValue);
+	gettimeofday(&stop, NULL);
+	double 	elapsed_ms = (stop.tv_sec - start.tv_sec) * 1000.0;
+			elapsed_ms += (stop.tv_usec - start.tv_usec) / 1000.0;
+	printf("TASK 3 Array Linear Search:  %.2f milliseconds\n", elapsed_ms);
+
+
+	//Binary Search of Array
+	gettimeofday(&start, NULL);
+		closestValue = arrayBinarySearch(midPointsArray.array,midPointsArray.size,uTarget,data_out);
+	fprintf(data_out,"%f\n",closestValue);
+	gettimeofday(&stop, NULL);
+		elapsed_ms = (stop.tv_sec - start.tv_sec) * 1000.0;
+		elapsed_ms += (stop.tv_usec - start.tv_usec) / 1000.0;
+	printf("TASK 3 Array Binary Search:  %.2f milliseconds\n", elapsed_ms);
+
+	//Linear Search of Linked List
+	gettimeofday(&start, NULL);
+		closestValue = linkedListLinearSearch(midPointsList->head,uTarget,data_out);
+	fprintf(data_out,"%f\n",closestValue);
+	gettimeofday(&stop, NULL);
+		elapsed_ms = (stop.tv_sec - start.tv_sec) * 1000.0;
+		elapsed_ms += (stop.tv_usec - start.tv_usec) / 1000.0;
+	printf("TASK 3 Linked List Linear Search:  %.2f milliseconds\n", elapsed_ms);
+
+	//Linear Search of Linked List
+	gettimeofday(&start, NULL);
+	bstSearch(bst->root,uTarget,data_out);
+	printf("%f\n",closestValue);
+	gettimeofday(&stop, NULL);
+		elapsed_ms = (stop.tv_sec - start.tv_sec) * 1000.0;
+		elapsed_ms += (stop.tv_usec - start.tv_usec) / 1000.0;
+	printf("TASK 3 BST Search:  %.2f milliseconds\n", elapsed_ms);
+
 }
 
 void vortcalc(const char* flow_file)
 {
-    printf("vortcalc() - IMPLEMENT ME!\n");
+	//Open Data File
+	FILE *data_in;
+	data_in = fopen(flow_file, "r");
+
+	if(data_in == NULL){
+		printf("Failed to Open File\n");
+		return;
+	}
+
+	//Store Column Headings
+	char headings[BUFFER];
+
+	//Check heading format
+	fscanf(data_in, "%s",headings);
+	if(strcmp(headings,"x,y,u,v")!=0){
+		printf("Incorrect data format - expecting <x,y,u,v>\n");
+		printf("Data is in %s\n",headings);
+		return;
+	}
+
+	//Define holding variables
+	float xTempPrev, xTemp;
+	float yTempPrev, yTemp;
+	float uTempPrev, uTemp;
+	float vTempPrev, vTemp;
+
+	int xRange = 1;
+	int yRange = 1;
+	int endOfX = 0;
+	int endOfY = 0;
+
+	fscanf(data_in, "%f,%f,%f,%f", &xTempPrev,&yTempPrev,&uTempPrev,&vTempPrev);
+
+	//Scan data to calculate nessarry dimensions of x and y
+	while(fscanf(data_in, "%f,%f,%f,%f", &xTemp,&yTemp,&uTemp,&vTemp) > 0){
+		if(xTempPrev>xTemp){
+					endOfX = 1;
+		}
+		if(xTempPrev != xTemp && endOfX == 0){
+			xRange++;
+		}
+		if(yTempPrev != yTemp && endOfY == 0){
+			yRange++;
+		}
+		if(yTempPrev > yTemp){
+			endOfY = 1;
+		}
+		xTempPrev = xTemp;
+		yTempPrev = yTemp;
+		uTempPrev = uTemp;
+		vTempPrev = vTemp;
+	}
+
+	if(DEBUG_TASK4){
+			printf("Array Dimensions = [%i,%i]\n",xRange,yRange);
+	}
+
+	//Define 2D array to hold points
+	point_data*** points = (point_data***)malloc(xRange*sizeof(point_data**));
+
+
+	for(int i = 0; i <= xRange; i++){
+		points[i] = (point_data**)malloc(yRange*sizeof(point_data*));
+
+		for(int j = 0 ; j <= yRange ; j++){
+			points[i][j] = (point_data*)malloc(sizeof(point_data));
+		}
+	}
+
+	//Re open File to scan for the second time.
+	rewind(data_in);
+
+	int xIndex = 0;
+	int yIndex = 0;
+
+	fscanf(data_in, "%s",headings);
+
+	//Process Data
+	while(fscanf(data_in, "%f,%f,%f,%f", &xTemp,&yTemp,&uTemp,&vTemp) > 0){
+		if(xIndex > xRange-1){
+			xIndex = 0;
+			yIndex++;
+		}
+		if(yIndex > yRange-1){
+			yIndex = 0;
+		}
+		points[xIndex][yIndex]=setData1(xTemp,yTemp,uTemp,vTemp);
+		xIndex++;
+	}
+
+	if(DEBUG_TASK4){
+		for(int i = 0; i < xRange; i++){
+			for(int j = 0; j < yRange; j++){
+				printData(points[i][j]);
+			}
+		}
+	}
+
+	//Define 2D array for omega values
+
+	float omega[xRange][yRange];
+
+	for(int i = 0 ; i < xRange ; i++){
+		for(int j = 0 ; j < yRange ; j++){
+			if(i == xRange-1 && j == yRange-1){
+				omega[i][j] = cornerCase(points,i,j);
+			}else if(j == yRange-1){
+				omega[i][j] = yEdgeCase(points,i,j);
+			}else if(i == xRange-1){
+				omega[i][j] = xEdgeCase(points,i,j);
+			}else{
+				omega[i][j] = normalCase(points,i,j);
+			}
+		}
+	}
+	if(DEBUG_TASK4){
+		printf("\nOmega Vales\n");
+		for(int i = 0 ; i < xRange ; i++){
+			for(int j = 0 ; j < yRange ; j++){
+				printf("%f\n",omega[i][j]);
+			}
+		}
+	}
+
+	//Copy values into 1D array to be sorted
+	int numValues = xRange*yRange;
+	int index = 0;
+
+	float omegaArray[numValues];
+
+	for(int i = 0 ; i < xRange ; i++){
+		for(int j = 0 ; j < yRange ; j++){
+			omegaArray[index] = omega[i][j];
+			index++;
+		}
+	}
+
+	qsort(omegaArray,numValues,sizeof(float),qSortCMP_floats);
+
+	if(DEBUG_TASK4){
+		printf("\nSorted Vales\n");
+		for(int i = 0 ; i<numValues ; i++){
+			printf("%f\n",omegaArray[i]);
+		}
+	}
+
+
+
+	FILE *data_out;
+	data_out = fopen("task4.csv","w+");
+
+	fprintf(data_out,"omega\n");
+	for(int i=0; i<numValues; i++){
+	   fprintf(data_out,"%f\n",omegaArray[i]);
+	}
+
+	fclose(data_out);
+
 }
 
-//FUNCTIONS
+//##########################################################################
+//########################### FUNCTIONS ####################################
+//##########################################################################
+
+float cornerCase(point_data*** points, int i, int j){
+	float part1 = (points[i][j]->v - points[i-1][j]->v)/
+			(points[i][j]->x-points[i-1][j]->x);
+	float part2 = (points[i][j]->u-points[i][j-1]->u)/
+			(points[i][j]->y - points[i][j-1]->y);
+	return (part1 - part2);
+}
+
+float yEdgeCase(point_data*** points, int i, int j){
+	float part1 = (points[i+1][j]->v - points[i][j]->v)/
+			(points[i+1][j]->x-points[i][j]->x);
+	float part2 = (points[i][j]->u-points[i][j-1]->u)/
+			(points[i][j]->y - points[i][j-1]->y);
+	return (part1 - part2);
+}
+
+float xEdgeCase(point_data*** points, int i, int j){
+	float part1 = (points[i][j]->v - points[i-1][j]->v)/
+			(points[i][j]->x-points[i-1][j]->x);
+	float part2 = (points[i][j+1]->u-points[i][j]->u)/
+			(points[i][j+1]->y - points[i][j]->y);
+	return (part1 - part2);
+}
+float normalCase(point_data*** points, int i, int j){
+	float part1 = (points[i+1][j]->v - points[i][j]->v)/
+			(points[i+1][j]->x-points[i][j]->x);
+	float part2 = (points[i][j+1]->u-points[i][j]->u)/
+			(points[i][j+1]->y - points[i][j]->y);
+	return (part1 - part2);
+}
 
 struct point_data* setData1(float x, float y, float u, float v){
     struct point_data *point = malloc(sizeof(struct point_data));
@@ -427,11 +676,13 @@ void fprintData(struct point_data *point,FILE *file){
 }
 
 void fprintDataS(struct point_data *point,FILE *file){
-    fprintf(file,"%f,%f,%f,%f,%f\n",point->x,point->y,point->u,point->v,point->s);
+    fprintf(file,"%f,%f,%f,%f,%f\n",
+    		point->x,point->y,point->u,point->v,point->s);
 }
 
 void fprintNode(struct node node,FILE *file){
-    fprintf(file,"%f,%f,%f,%f,%f\n",node.data.x,node.data.y,node.data.u,node.data.v,node.data.s);
+    fprintf(file,"%f,%f,%f,%f,%f\n",
+    		node.data.x,node.data.y,node.data.u,node.data.v,node.data.s);
 }
 
 list_t* list_new()
@@ -537,119 +788,12 @@ void printList(list_t* list,int recursive){
 }
 
 void printNode(struct node node){
-	printf("%f,%f,%f,%f,%f\n",node.data.x,node.data.y,node.data.u,node.data.v,node.data.s);
-}
-
-// Merges two subarrays of arr[].
-// First subarray is arr[l..m]
-// Second subarray is arr[m+1..r]
-void merge(struct point_data arr[], int l, int m, int r, char order, char element)
-{
-    int i, j, k;
-    int n1 = m - l + 1;
-    int n2 =  r - m;
-    float LData, RData;
-
-    /* create temp arrays */
-    struct point_data L[n1], R[n2];
-
-    /* Copy data to temp arrays L[] and R[] */
-    for (i = 0; i < n1; i++)
-        L[i] = arr[l + i];
-    for (j = 0; j < n2; j++)
-        R[j] = arr[m + 1+ j];
-
-    /* Merge the temp arrays back into arr[l..r]*/
-    i = 0; // Initial index of first subarray
-    j = 0; // Initial index of second subarray
-    k = l; // Initial index of merged subarray
-    while (i < n1 && j < n2)
-    {
-    	//Check which element we are sorting by
-    	switch(element){
-    	case 's':
-    		LData = L[i].s;
-    		RData = R[j].s;
-    		break;
-    	case 'u':
-    		LData = L[i].u;
-			RData = R[j].u;
-			break;
-    	}
-    	//Check for ascending or descending
-        if(order == 'd'){
-        	if (LData >= RData)
-        	        {
-        	            arr[k] = L[i];
-        	            i++;
-        	        }
-        	        else
-        	        {
-        	            arr[k] = R[j];
-        	            j++;
-        	        }
-        	        k++;
-        }else{
-        	if (LData <= RData)
-        	        {
-        	            arr[k] = L[i];
-        	            i++;
-        	        }
-        	        else
-        	        {
-        	            arr[k] = R[j];
-        	            j++;
-        	        }
-        	        k++;
-        }
-
-    }
-
-    /* Copy the remaining elements of L[], if there
-       are any */
-    while (i < n1)
-    {
-        arr[k] = L[i];
-        i++;
-        k++;
-    }
-
-    /* Copy the remaining elements of R[], if there
-       are any */
-    while (j < n2)
-    {
-        arr[k] = R[j];
-        j++;
-        k++;
-    }
-}
-
-/* l is for left index and r is right index of the
-   sub-array of arr to be sorted */
-void mergeSort(struct point_data arr[], int l, int r, char order, char element)
-{
-	if(order == 'a' || order == 'd'){
-		if (l < r)
-		    {
-		        // Same as (l+r)/2, but avoids overflow for
-		        // large l and h
-		        int m = l+(r-l)/2;
-
-		        // Sort first and second halves
-		        mergeSort(arr, l, m, order, element);
-		        mergeSort(arr, m+1, r, order, element);
-
-
-		        merge(arr, l, m, r, order, element);
-		    }
-	}else{
-		printf("Error - MergeSort - 4 Arg expecting a or d\n");
-	}
-
+	printf("%f,%f,%f,%f,%f\n",
+			node.data.x,node.data.y,node.data.u,node.data.v,node.data.s);
 }
 
 /* create a new empty bst structure */
-bst_t* bst_new(void (*delfunc)(void*), int (*cmpfunc)(const void*, const void*))
+bst_t* bst_new(void (*delfunc)(void*), int (*cmpfunc)(struct point_data*, struct point_data*))
 {
     bst_t* bst;
     bst = (bst_t*)malloc(sizeof(bst_t));
@@ -745,7 +889,7 @@ void perfect_insert(bst_t* bst, struct point_data* array, int low, int high)
     	// Choose root from array and insert
     	// Recursively do the same on left and right (1)
         int mid = low + (high - low) / 2;
-        int* ptr = array + mid;
+        point_data* ptr = array + mid;
         bst_insert(bst, ptr);
         perfect_insert(bst, array, low, mid - 1);
         perfect_insert(bst, array, mid + 1, high);
@@ -768,5 +912,160 @@ int make_unique(int* array, int n)
     }
     return dest+1;
 }
+void print_BST(BSTnode_t* node){
+	assert(node != NULL);
+	if(node->left != NULL){
+		print_BST(node->left);
+	}
+	printData((struct point_data*)(node->data));
+	if(node->right != NULL){
+		print_BST(node->right);
+	}
+	return;
+}
+float absF(float a, float b){
+	if(a<b)
+		return b-a;
+	else
+		return a-b;
+}
 
 
+// Returns element closest to target in array[]
+float arrayBinarySearch(struct point_data array[],int size,float target,FILE *file)
+{
+    // Check for Edge Cases
+    if (target <= array[0].u)
+        return array[0].u;
+    if (target >= array[size - 1].u)
+        return array[size - 1].u;
+
+    // Binary Search
+    int i = 0, j = size, mid = 0;
+    while (i < j) {
+        mid = (i + j) / 2;
+
+        if (array[mid].u == target)
+            return array[mid].u;
+
+        fprintf(file,"%f,",array[mid].u);
+        /* If target is less than array element,
+            then search in left */
+        if (target < array[mid].u) {
+
+            // If target is greater than previous
+            // to mid, return closest of two
+            if (mid > 0 && target > array[mid - 1].u)
+            	return getClosest(array[mid - 1].u,array[mid].u, target);
+
+            /* Repeat for left half */
+            j = mid;
+        }
+
+        // If target is greater than mid
+        else {
+            if (mid < size - 1 && target < array[mid + 1].u)
+                return getClosest(array[mid].u, array[mid + 1].u, target);
+            // update i
+            i = mid + 1;
+        }
+    }
+    // Only single element left after search
+    return array[mid].u;
+}
+
+// Method to compare which one is the more close.
+// We find the closest by taking the difference
+// between the target and both values. It assumes
+// that val2 is greater than val1 and target lies
+// between these two.
+float getClosest(float val1, float val2, float target)
+{
+    if (target - val1 >= val2 - target)
+        return val2;
+    else
+        return val1;
+}
+
+float arrayLinearSearch(struct point_data array[],float uTarget, FILE *file){
+	int i = 0;
+	while(absF(uTarget, array[i+1].u) <	absF(uTarget, array[i].u)){
+		fprintf(file,"%f,",array[i].u);
+		i++;
+	}
+	return array[i].u;
+}
+
+float linkedListLinearSearch(node_t *node, float uTarget, FILE *file){
+	assert(node != NULL);
+	if(node->next == NULL){
+		return node->data.u;
+	}else if(absF(uTarget, node->next->data.u) < absF(uTarget,node->data.u)){
+		fprintf(file,"%f,",node->data.u);
+		return linkedListLinearSearch(node->next,uTarget,file);
+	}
+	return node->data.u;
+}
+
+void bstSearch(BSTnode_t* root, float uTarget, FILE *file){
+	BSTnode_t *closest_point = root;
+	bstSearchUtil(root,closest_point,uTarget,file);
+	return;
+}
+
+void bstSearchUtil(BSTnode_t* root, BSTnode_t* closestNode, float uTarget,FILE *file){
+	if(root == NULL){
+		return;
+	}
+	struct point_data *current_point = (struct point_data*)(root->data);
+	struct point_data *closest_node = (struct point_data*)(closestNode->data);
+
+	fprintf(file,"%f,",current_point->u);
+
+	//Check if target matches node
+	if(current_point->u == uTarget){
+		closestNode = root;
+		return;
+	}
+
+	//Check if current node closer than closestNode
+	if(absF(current_point->u,uTarget) < absF(closest_node->u,uTarget)){
+		closestNode = root;
+	}
+
+	//Traverse Left or Right
+	if(current_point->u < uTarget){
+		bstSearchUtil(root->right,closestNode,uTarget,file);
+	}else{
+		bstSearchUtil(root->left,closestNode,uTarget,file);
+	}
+}
+
+int qSortUcmp(const void *a, const void *b)
+{
+    struct point_data *ia = (struct point_data *)a;
+    struct point_data *ib = (struct point_data *)b;
+
+    if(ia->u > ib->u)
+    	return 1;
+    else
+    	return -1;
+}
+int qSortCMP_sDecending(const void *a, const void *b){
+	struct point_data *ia = (struct point_data *)a;
+	struct point_data *ib = (struct point_data *)b;
+
+	if(ia->s > ib->s)
+		return -1;
+	else
+		return 1;
+}
+int qSortCMP_floats(const void *a, const void *b){
+	float *ia = (float*)a;
+	float *ib = (float*)b;
+
+	if(*ia > *ib)
+		return -1;
+	else
+		return 1;
+}
