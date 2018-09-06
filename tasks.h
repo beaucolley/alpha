@@ -29,13 +29,13 @@ typedef struct {
 
 //Linked List Node
 struct node {
-    struct point_data data;
+    struct point_data* data;
     node_t* next;
 };
 
 //Array Structure
 typedef struct {
-  point_data *array;
+  point_data **array;
   size_t size;
 }point_data_Array;
 
@@ -73,9 +73,9 @@ void searching(const char* flow_file);
 
 void vortcalc(const char* flow_file);
 
-struct point_data* setData1(float x, float y, float u, float v);
+struct point_data* setData(float x, float y, float u, float v);
 
-struct point_data* setData2(float x, float y, float u, float v, float s);
+struct point_data* setDataS(float x, float y, float u, float v, float s);
 
 void printData(struct point_data *point);
 
@@ -93,7 +93,9 @@ void list_push_front(list_t* list, struct point_data* data);
 
 void list_push_back(list_t* list, struct point_data* data);
 
-struct point_data list_pop_front(list_t* list);
+struct point_data* list_pop_front(list_t* list);
+
+void linked_list_free(list_t* list);
 
 void runningSum(list_t* list, float x, float y,float u,float v);
 
@@ -113,23 +115,19 @@ void bst_free(bst_t* bst);
 
 int bst_insert(bst_t* bst, void* d);
 
-int floatcmp(struct point_data* a, struct point_data* b);
+int bstFloatCmp(struct point_data* a, struct point_data* b);
 
-void perfect_insert(bst_t* bst, struct point_data* array, int low, int high);
+void perfect_insert(bst_t* bst, struct point_data** array, int low, int high);
 
 void no_free(void* v);
 
-int make_unique(int* array, int n);
-
 void print_BST(BSTnode_t* node);
-
-float absF(float a, float b);
 
 float getClosest(float val1, float val2, float target);
 
-float arrayBinarySearch(struct point_data array[], int size, float target, FILE *file);
+float arrayBinarySearch(struct point_data* array[], int size, float target, FILE *file);
 
-float arrayLinearSearch(struct point_data array[],float uTarget,FILE *file);
+float arrayLinearSearch(struct point_data* array[],float uTarget,FILE *file);
 
 float linkedListLinearSearch(node_t *node, float uTarget, FILE *file);
 
@@ -137,10 +135,10 @@ void bstSearch(BSTnode_t* root, float uTarget, FILE *file);
 
 void bstSearchUtil(BSTnode_t* root, BSTnode_t* closestNode, float uTarget,FILE *file);
 
-int qSortUcmp(const void *a, const void *b);
+int qSortcmp_uAscending(const void *a, const void *b);
 
 int qSortCMP_sDecending(const void *a, const void *b);
 
-int qSortCMP_floats(const void *a, const void *b);
+int qSortCMP_Descending_F(const void *a, const void *b);
 
 #endif

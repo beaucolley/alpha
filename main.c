@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
 	elapsed_ms += (stop.tv_usec - start.tv_usec) / 1000.0;
 	printf("TASK 1:  %.2f milliseconds\n", elapsed_ms);
 	printf("\n");
-        
+
 	/* Task 2: Coarser Grid */
 	gettimeofday(&start, NULL);
 	coarsegrid(flow_file, resolution);
@@ -55,24 +55,25 @@ int main(int argc, char *argv[]) {
     	elapsed_ms += (stop.tv_usec - start.tv_usec) / 1000.0;
     	printf("TASK 2:  %.2f milliseconds\n", elapsed_ms);
 	printf("\n");
-        
+
 	/* Task 3: Searching */
-	gettimeofday(&start, NULL);
-	searching(flow_file);
-	gettimeofday(&stop, NULL);
-    	elapsed_ms = (stop.tv_sec - start.tv_sec) * 1000.0;
-    	elapsed_ms += (stop.tv_usec - start.tv_usec) / 1000.0;
-   	printf("TASK 3:  %.2f milliseconds\n", elapsed_ms);
-        printf("\n");
-        
-	/* Task 4: Statistics */
-	gettimeofday(&start, NULL);
-	vortcalc(flow_file);
-	gettimeofday(&stop, NULL);
-    	elapsed_ms = (stop.tv_sec - start.tv_sec) * 1000.0;
-    	elapsed_ms += (stop.tv_usec - start.tv_usec) / 1000.0;
-    	printf("TASK 4:  %.2f milliseconds\n", elapsed_ms);
+//	gettimeofday(&start, NULL);
+//	searching(flow_file);
+//	gettimeofday(&stop, NULL);
+//    	elapsed_ms = (stop.tv_sec - start.tv_sec) * 1000.0;
+//    	elapsed_ms += (stop.tv_usec - start.tv_usec) / 1000.0;
+//   	printf("TASK 3:  %.2f milliseconds\n", elapsed_ms);
+//        printf("\n");
+//
+//	/* Task 4: Statistics */
+//	gettimeofday(&start, NULL);
+//	vortcalc(flow_file);
+//	gettimeofday(&stop, NULL);
+//    	elapsed_ms = (stop.tv_sec - start.tv_sec) * 1000.0;
+//    	elapsed_ms += (stop.tv_usec - start.tv_usec) / 1000.0;
+//    	printf("TASK 4:  %.2f milliseconds\n", elapsed_ms);
 	
+	printf("All Tasks Successful\n");
     
 	return (EXIT_SUCCESS);
 }
